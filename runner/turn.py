@@ -24,6 +24,7 @@ LANES = {
     "plugins": """Own the Plugin Admin cutover. Replace its failed legacy provider lane with the supplied Cognilode Core contract while preserving read, write, mutate, delete, search, credential custody and plugin factory operations. Integrate persistent Network/Operator request reporting. Produce concrete code or a reviewable patch and exercise a meaningful operation in your sandbox. Work substantively through completion.""",
     "organization": """Own the recurring organization rotor. Implement a manager-to-specialist-to-contributor loop over the supplied Framework/Harness application and its single ChatGPT product adapter. Every turn must be provider-accepted, stream into the shared corpus and Operator, return useful work, and alter the manager's next action. Produce concrete implementation artifacts and deployment handoff. Work substantively through completion.""",
 }
+NETWORK_EVENTS = []
 
 
 def github(method, path, data=None):
@@ -63,14 +64,20 @@ def network_event(method, path, status, content_type, elapsed_ms):
         "credential_ref": "chatgpt.product-session.owner-personal",
         "response_headers": {"content-type": content_type},
     }
+    NETWORK_EVENTS.append(event)
     request = urllib.request.Request(
         endpoint,
         method="POST",
         data=json.dumps(event).encode(),
         headers={"Authorization": "Bearer " + bearer, "Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(request, timeout=30):
-        pass
+    try:
+        with urllib.request.urlopen(request, timeout=30):
+            pass
+    except Exception:
+        # The same compact event is committed with the durable turn receipt.
+        # Projection failure must never cancel an accepted upstream operation.
+        event["operator_projection_pending"] = True
 
 
 def payloads(response):
@@ -191,6 +198,7 @@ def main():
         "terminal": terminal,
         "response_characters": len(final_text),
         "event_summaries": events[-50:],
+        "provider_http": NETWORK_EVENTS,
         "run_id": os.environ.get("GITHUB_RUN_ID"),
     }
     receipt["state_issue"] = publish(lane, receipt, final_text)
