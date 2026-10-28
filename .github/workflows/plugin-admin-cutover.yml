@@ -1,0 +1,60 @@
+name: plugin-admin-free-cutover
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  provider-lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: evanbrown3000/plugin-admin
+          token: ${{ secrets.CORE_REPO_TOKEN }}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Project the native account grant
+        env:
+          CHATGPT_ACCESS_TOKEN: ${{ secrets.CHATGPT_ACCESS_TOKEN }}
+          CHATGPT_ACCOUNT_ID: ${{ secrets.CHATGPT_ACCOUNT_ID }}
+        run: |
+          umask 077
+          python3 - <<'PY'
+          import json, os
+          with open('/tmp/plugin-admin-auth.json','w') as f:
+              json.dump({'tokens': {'access_token': os.environ['CHATGPT_ACCESS_TOKEN'], 'account_id': os.environ['CHATGPT_ACCOUNT_ID']}}, f)
+          PY
+      - name: Require Allow all actions readback
+        run: |
+          printf '%s' '{"app_id":"asdk_app_6ae24a6b9adc819194f05ea2c91c14cc"}' >/tmp/app.json
+          node scripts/admin.mjs app_full_access --auth-file /tmp/plugin-admin-auth.json --arguments-file /tmp/app.json >app-full-access.json
+          python3 - <<'PY'
+          import json
+          v=json.load(open('app-full-access.json'))
+          assert v.get('ok') is True, v
+          assert v.get('apps_privacy_control') == 'full_access', v
+          assert v.get('app_id') == 'asdk_app_6ae24a6b9adc819194f05ea2c91c14cc', v
+          print(json.dumps({'ok':True,'app_id':v['app_id'],'link_id':v.get('link_id'),'apps_privacy_control':v['apps_privacy_control'],'changed':v.get('changed')}))
+          PY
+      - name: Require installed and enabled plugin readback
+        run: |
+          printf '%s' '{"plugin_id":"plugin_asdk_app_6ae24a6b9adc819194f05ea2c91c14cc"}' >/tmp/plugin.json
+          node scripts/admin.mjs plugin_install --auth-file /tmp/plugin-admin-auth.json --arguments-file /tmp/plugin.json >plugin-install.json
+          python3 - <<'PY'
+          import json
+          v=json.load(open('plugin-install.json'))
+          assert v.get('ok') is True, v
+          assert v.get('plugin_id') == 'plugin_asdk_app_6ae24a6b9adc819194f05ea2c91c14cc', v
+          assert v.get('installed') is True and v.get('enabled') is True, v
+          print(json.dumps({'ok':True,'plugin_id':v['plugin_id'],'installed':True,'enabled':True,'changed':v.get('changed')}))
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-admin-provider-readback
+          path: |
+            app-full-access.json
+            plugin-install.json
+          if-no-files-found: warn
+          retention-days: 7
