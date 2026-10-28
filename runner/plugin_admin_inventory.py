@@ -15,6 +15,7 @@ gh_headers={'Authorization':'Bearer '+gh_token,'Accept':'application/vnd.github+
 label='plugin-admin-current'
 title='Current Plugin Admin provider snapshot'
 body='<!-- cognilode.plugin-admin-snapshot.v1 -->\n```json\n'+json.dumps(out,ensure_ascii=False,indent=2)+'\n```\n'
+requests.post(f'https://api.github.com/repos/{repo}/labels',headers=gh_headers,json={'name':label,'color':'1f6feb','description':'Current Plugin Admin provider projection'},timeout=30)
 q=requests.get(f'https://api.github.com/repos/{repo}/issues',headers=gh_headers,params={'state':'open','labels':label,'per_page':10},timeout=30)
 q.raise_for_status()
 issues=[x for x in q.json() if x.get('title')==title]
