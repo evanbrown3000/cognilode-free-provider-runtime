@@ -1,4 +1,4 @@
-import json,os,time
+import base64,json,os,time
 import requests
 h=json.loads(os.environ.get('CHATGPT_BROWSER_HEADERS','{}'))
 h.update({'Authorization':'Bearer '+os.environ['CHATGPT_ACCESS_TOKEN'],'ChatGPT-Account-ID':os.environ['CHATGPT_ACCOUNT_ID'],'Cookie':os.environ.get('CHATGPT_COOKIE',''),'Accept':'application/json','Origin':'https://chatgpt.com','Referer':'https://chatgpt.com/'})
@@ -14,7 +14,15 @@ repo=os.environ.get('PLUGIN_STATE_REPO','evanbrown3000/cognilode-conversation-co
 gh_headers={'Authorization':'Bearer '+gh_token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}
 label='plugin-admin-current'
 title='Current Plugin Admin provider snapshot'
-body='<!-- cognilode.plugin-admin-snapshot.v1 -->\n```json\n'+json.dumps(out,ensure_ascii=False,indent=2)+'\n```\n'
+content_path='snapshots/plugin-admin-current.json'
+content_url=f'https://api.github.com/repos/{repo}/contents/{content_path}'
+prior=requests.get(content_url,headers=gh_headers,timeout=30)
+payload={'message':'Update Plugin Admin provider snapshot','content':base64.b64encode((json.dumps(out,ensure_ascii=False,indent=2)+'\n').encode()).decode()}
+if prior.ok:payload['sha']=prior.json()['sha']
+stored=requests.put(content_url,headers=gh_headers,json=payload,timeout=30);stored.raise_for_status()
+plugins=(out.get('installed') or {}).get('plugins') or []
+compact=[{'id':p.get('id') or p.get('plugin_id'),'name':p.get('name') or p.get('manifest',{}).get('name'),'enabled':p.get('enabled')} for p in plugins]
+body='<!-- cognilode.plugin-admin-snapshot.v1 -->\n```json\n'+json.dumps({'schema':out['schema'],'status':out['status'],'observed_at':out['observed_at'],'count':len(plugins),'plugins':compact,'content_path':content_path},ensure_ascii=False,indent=2)+'\n```\n'
 requests.post(f'https://api.github.com/repos/{repo}/labels',headers=gh_headers,json={'name':label,'color':'1f6feb','description':'Current Plugin Admin provider projection'},timeout=30)
 q=requests.get(f'https://api.github.com/repos/{repo}/issues',headers=gh_headers,params={'state':'open','labels':label,'per_page':10},timeout=30)
 q.raise_for_status()
