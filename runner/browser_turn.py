@@ -11,10 +11,13 @@ ASSIGNMENTS={
 }
 lane=os.environ["LANE"]; prompt=ASSIGNMENTS[lane]
 cookies=json.loads(os.environ.get("CHATGPT_COOKIES","[]"))
+browser_headers=json.loads(os.environ.get("CHATGPT_BROWSER_HEADERS","{}"))
 receipt={"schema":"cognilode.chatmode-browser-turn.v1","lane":lane,"accepted":False,"assistant_activity":False,"terminal":False,"events":[]}
 with sync_playwright() as p:
  browser=p.chromium.launch(headless=True)
- context=browser.new_context(viewport={"width":1440,"height":900})
+user_agent=browser_headers.get("user-agent") or browser_headers.get("User-Agent")
+extra={k:v for k,v in browser_headers.items() if k.lower() in {"accept-language","oai-device-id","oai-did","oai-language","originator","sec-ch-ua","sec-ch-ua-mobile","sec-ch-ua-platform","dnt"}}
+context=browser.new_context(viewport={"width":1440,"height":900},user_agent=user_agent,extra_http_headers=extra)
  normalized=[]
  for source in cookies:
   item={k:source[k] for k in ("name","value","domain","path","expires","httpOnly","secure") if k in source}
@@ -30,7 +33,12 @@ with sync_playwright() as p:
  page.on("response",response_seen)
  page.goto("https://chatgpt.com/",wait_until="domcontentloaded",timeout=60000)
  editor=page.locator('[role="textbox"][contenteditable="true"]').first
+try:
  editor.wait_for(state="visible",timeout=45000)
+except Exception:
+ receipt.update({"observed_at":time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime()),"conversation_url":page.url.split("?",1)[0],"page_title":page.title(),"page_text":page.locator("body").inner_text()[:500]})
+ Path("turn-receipt.json").write_text(json.dumps(receipt,indent=2))
+ raise
  editor.fill(prompt)
  page.locator('button[aria-label="Send"]').first.click()
  deadline=time.time()+420

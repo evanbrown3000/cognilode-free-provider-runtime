@@ -1,8 +1,6 @@
 name: four-chatmode-browser-turns
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '7,27,47 * * * *'
 permissions:
   contents: read
 concurrency:
@@ -27,6 +25,7 @@ jobs:
         env:
           LANE: ${{ matrix.lane }}
           CHATGPT_COOKIES: ${{ secrets.CHATGPT_COOKIES }}
+          CHATGPT_BROWSER_HEADERS: ${{ secrets.CHATGPT_BROWSER_HEADERS }}
       - if: always()
         uses: actions/upload-artifact@v4
         with:
