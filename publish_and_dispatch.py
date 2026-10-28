@@ -52,5 +52,5 @@ st2,_sink=api('GET','/repos/evanbrown3000/cognilode-conversation-corpus')
 if st2==404:
  st2,_sink=api('POST','/user/repos',{'name':'cognilode-conversation-corpus','description':'Private original Chat-mode conversations and corpus projections','private':True,'has_issues':True,'has_projects':False,'has_wiki':False,'auto_init':True})
  assert st2==201,(st2,_sink)
-st,_=api('POST',f'/repos/evanbrown3000/{repo}/actions/workflows/browser-turns.yml/dispatches',{'ref':'main'});assert st==204,st
+st,_=api('POST',f'/repos/evanbrown3000/{repo}/actions/workflows/plugin-admin.yml/dispatches',{'ref':'main'});assert st==204,st
 print(json.dumps({'ok':True,'repository':f'evanbrown3000/{repo}','workflow_dispatched':True}))

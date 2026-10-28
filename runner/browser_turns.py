@@ -83,7 +83,11 @@ async def run_lane(context, index, assignment):
     page.on("response", observe)
     await page.goto("https://chatgpt.com/", wait_until="domcontentloaded", timeout=60000)
     editor = page.locator('[role="textbox"][contenteditable="true"]').first
-    await editor.wait_for(state="visible", timeout=45000)
+    try:
+        await editor.wait_for(state="visible", timeout=45000)
+    except Exception as error:
+        body = await page.locator("body").inner_text(timeout=5000)
+        raise RuntimeError("composer unavailable at {}: {}".format(page.url.split("?", 1)[0], body[:700])) from error
     await editor.fill(assignment)
     send = page.locator('button[aria-label*="Send" i]').first
     await send.wait_for(state="visible", timeout=20000)
