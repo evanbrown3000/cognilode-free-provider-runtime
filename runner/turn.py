@@ -16,7 +16,6 @@ from pathlib import Path
 
 from codex_backend_sdk import CodexClient
 from codex_backend_sdk.storage import TokenStore
-from corpus import Projection
 
 
 LANES = {
@@ -130,10 +129,6 @@ def publish_responsibility(receipt, text):
 def main():
     lane = sys.argv[1]
     assignment = os.environ.get("COGNILODE_ASSIGNMENT") or LANES[lane]
-    model = "gpt-5-6-thinking"
-    reasoning = "extended"
-    projection = Projection(lane, assignment, model, reasoning)
-    projection.begin()
     plan = Path("core/ARCHITECTURE_PLAN.md")
     bundle = Path("cognilode-core-input.zip")
     with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as archive:
@@ -172,8 +167,8 @@ def main():
     message_id = str(uuid.uuid4())
     body = {
         "action": "next",
-        "model": model,
-        "thinking_effort": reasoning,
+        "model": "gpt-5-6-thinking",
+        "thinking_effort": "extended",
         "parent_message_id": str(uuid.uuid4()),
         "timezone": "America/Matamoros",
         "messages": [{
@@ -183,27 +178,9 @@ def main():
             "metadata": {"attachments": [attachment]},
         }],
     }
-    try:
-        client.chatgpt.conversations.prepare(body)
-        response = client.chatgpt.conversations.create_stream(body)
-        response.raise_for_status()
-    except Exception as error:
-        projection.failure(error, NETWORK_EVENTS)
-        receipt = {
-            "schema": "cognilode.chatmode-turn.v1", "lane": lane, "provider": "chatgpt.com",
-            "conversation_id": None, "accepted": False, "terminal": True,
-            "response_characters": 0, "event_summaries": [], "provider_http": NETWORK_EVENTS,
-            "run_id": os.environ.get("GITHUB_RUN_ID"), "corpus": projection.summary(),
-            "failure": {"type": type(error).__name__, "message": str(error)[:2000]},
-        }
-        if os.environ.get("COGNILODE_RESPONSIBILITY_ISSUE"):
-            receipt["responsibility_id"] = os.environ.get("COGNILODE_RESPONSIBILITY_ID")
-            receipt["result_comment_url"] = publish_responsibility(receipt, "")
-        else:
-            receipt["state_issue"] = publish(lane, receipt, "")
-        Path("turn-receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
-        print(json.dumps({"lane": lane, "accepted": False, "terminal": True, "corpus": projection.summary()}))
-        raise SystemExit(1)
+    client.chatgpt.conversations.prepare(body)
+    response = client.chatgpt.conversations.create_stream(body)
+    response.raise_for_status()
     conversation_id = None
     texts = {}
     terminal = False
@@ -226,7 +203,6 @@ def main():
         elif value.get("type") not in (None, "ping", "heartbeat"):
             events.append({"type": value.get("type"), "request_id": value.get("request_id")})
     final_text = "\n\n".join(texts.values())
-    projection.success(final_text, NETWORK_EVENTS, events, conversation_id)
     receipt = {
         "schema": "cognilode.chatmode-turn.v1",
         "lane": lane,
@@ -238,7 +214,6 @@ def main():
         "event_summaries": events[-50:],
         "provider_http": NETWORK_EVENTS,
         "run_id": os.environ.get("GITHUB_RUN_ID"),
-        "corpus": projection.summary(),
     }
     if os.environ.get("COGNILODE_RESPONSIBILITY_ISSUE"):
         receipt["responsibility_id"] = os.environ.get("COGNILODE_RESPONSIBILITY_ID")
