@@ -21,8 +21,8 @@ jobs:
           repository: evanbrown3000/cognilode-core-application
           token: ${{ secrets.CORE_REPO_TOKEN }}
           path: core
-      - run: python -m pip install --disable-pip-version-check playwright
-      - run: xvfb-run -a python runner/browser_turns.py
+      - run: python -m pip install --disable-pip-version-check ./core/domains/conversations
+      - run: python runner/rotor.py
         env:
           CHATGPT_ACCESS_TOKEN: ${{ secrets.CHATGPT_ACCESS_TOKEN }}
           CHATGPT_ACCOUNT_ID: ${{ secrets.CHATGPT_ACCOUNT_ID }}
