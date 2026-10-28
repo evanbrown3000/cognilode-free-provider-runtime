@@ -158,18 +158,21 @@ async def ensure_authenticated(context):
             pass
 
     email_choice = page.locator('button:has-text("Continue with email")').first
-    if not await email_choice.is_visible():
+    email = page.locator('input[type="email"],input[name="email"],input[name="username"],input[placeholder*="Email" i]').first
+    if not await email_choice.is_visible() and not await email.is_visible():
         login = page.get_by_role("button", name="Log in").or_(page.get_by_role("link", name="Log in")).first
         await login.wait_for(state="visible", timeout=30000)
         await login.click(force=True)
-    try:
-        await email_choice.wait_for(state="visible", timeout=30000)
-    except Exception:
+    for _ in range(60):
+        if await email_choice.is_visible() or await email.is_visible():
+            break
+        await page.wait_for_timeout(500)
+    if await email_choice.is_visible():
+        await email_choice.click(force=True)
+    if not await email.is_visible():
         body = await page.locator("body").inner_text(timeout=5000)
-        Path("login-stage.json").write_text(json.dumps({"stage": "email_choice", "url": page.url.split("?", 1)[0], "body": body[:4000]}, indent=2))
-        raise
-    await email_choice.click(force=True)
-    email = page.locator('input[type="email"],input[name="email"],input[name="username"]').first
+        Path("login-stage.json").write_text(json.dumps({"stage": "email_field", "url": page.url.split("?", 1)[0], "body": body[:4000]}, indent=2))
+        raise RuntimeError("ChatGPT login did not expose an email field")
     await email.wait_for(state="visible", timeout=45000)
     await email.fill(os.environ["CHATGPT_LOGIN_USERNAME"])
     await page.get_by_role("button", name="Continue").first.click(force=True)
