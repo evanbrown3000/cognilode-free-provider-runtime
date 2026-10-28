@@ -144,6 +144,34 @@ async def run_lane(context, index, assignment):
     return receipt
 
 
+async def ensure_authenticated(context):
+    """Restore the owner session through ChatGPT's ordinary browser login flow."""
+    page = await context.new_page()
+    await page.goto("https://chatgpt.com/", wait_until="domcontentloaded", timeout=60000)
+    editor = page.locator('[role="textbox"][contenteditable="true"]').first
+    if await editor.count():
+        try:
+            await editor.wait_for(state="visible", timeout=10000)
+            await page.close()
+            return
+        except Exception:
+            pass
+
+    login = page.get_by_role("button", name="Log in").or_(page.get_by_role("link", name="Log in")).first
+    await login.wait_for(state="visible", timeout=30000)
+    await login.click()
+    email = page.locator('input[type="email"],input[name="email"],input[name="username"]').first
+    await email.wait_for(state="visible", timeout=45000)
+    await email.fill(os.environ["CHATGPT_LOGIN_USERNAME"])
+    await page.get_by_role("button", name="Continue").first.click()
+    password = page.locator('input[type="password"],input[name="password"]').first
+    await password.wait_for(state="visible", timeout=45000)
+    await password.fill(os.environ["CHATGPT_LOGIN_PASSWORD"])
+    await page.get_by_role("button", name="Continue").first.click()
+    await editor.wait_for(state="visible", timeout=90000)
+    await page.close()
+
+
 async def main():
     bundle = Path("cognilode-core-input.zip")
     with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as archive:
@@ -151,24 +179,21 @@ async def main():
             if source.exists():
                 archive.write(source, source.relative_to("core"))
     stored_headers = json.loads(os.environ.get("CHATGPT_BROWSER_HEADERS", "{}"))
-    extra_headers = {
-        "Authorization": "Bearer " + os.environ["CHATGPT_ACCESS_TOKEN"],
-        "ChatGPT-Account-ID": os.environ["CHATGPT_ACCOUNT_ID"],
-    }
+    extra_headers = {}
     for key, value in stored_headers.items():
         if key.lower() in {"accept-language", "oai-device-id", "oai-did", "oai-language", "sec-ch-ua", "sec-ch-ua-mobile", "sec-ch-ua-platform"} and isinstance(value, str):
             extra_headers[key] = value
     async with async_playwright() as playwright:
-        browser = await playwright.chromium.launch(
+        context = await playwright.chromium.launch_persistent_context(
+            user_data_dir="browser-profile",
             executable_path="/usr/bin/google-chrome",
             headless=False,
             args=["--disable-dev-shm-usage", "--no-sandbox"],
-        )
-        context = await browser.new_context(
             viewport={"width": 1440, "height": 1000},
             extra_http_headers=extra_headers,
         )
         await context.add_cookies(cookie_set())
+        await ensure_authenticated(context)
         results = await asyncio.gather(*[
             run_lane(context, index, assignment)
             for index, assignment in enumerate(ASSIGNMENTS, 1)
@@ -181,7 +206,7 @@ async def main():
                 normalized.append(result)
         Path("browser-turns-receipt.json").write_text(json.dumps({"results": normalized}, indent=2) + "\n")
         print(json.dumps({"accepted": sum(bool(item.get("accepted")) for item in normalized), "lanes": len(normalized)}))
-        await browser.close()
+        await context.close()
         if sum(bool(item.get("accepted")) for item in normalized) != 4:
             raise SystemExit(1)
 

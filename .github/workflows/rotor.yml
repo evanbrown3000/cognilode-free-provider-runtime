@@ -26,7 +26,10 @@ jobs:
           CHATGPT_ACCESS_TOKEN: ${{ secrets.CHATGPT_ACCESS_TOKEN }}
           CHATGPT_ACCOUNT_ID: ${{ secrets.CHATGPT_ACCOUNT_ID }}
           CHATGPT_COOKIE: ${{ secrets.CHATGPT_COOKIE }}
+          CHATGPT_COOKIES: ${{ secrets.CHATGPT_COOKIES }}
           CHATGPT_BROWSER_HEADERS: ${{ secrets.CHATGPT_BROWSER_HEADERS }}
+          CHATGPT_LOGIN_USERNAME: ${{ secrets.CHATGPT_LOGIN_USERNAME }}
+          CHATGPT_LOGIN_PASSWORD: ${{ secrets.CHATGPT_LOGIN_PASSWORD }}
           CORE_REPO_TOKEN: ${{ secrets.CORE_REPO_TOKEN }}
           OPERATOR_TOKEN: ${{ secrets.OPERATOR_TOKEN }}
           NETWORK_INGEST_URL: https://cognilode-provider-http-evidence.evanbrown3000.workers.dev/ingest
