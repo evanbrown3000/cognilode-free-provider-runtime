@@ -48,8 +48,34 @@ jobs:
           assert v.get('ok') is True, v
           r=v.get('result') or {}
           assert r.get('plugin_id') == 'plugin_asdk_app_6ae24a6b9adc819194f05ea2c91c14cc', v
-          assert r.get('installed') is True and r.get('enabled') is True, v
+          exact=[p for p in r.get('readback',[]) if p.get('id') == r.get('plugin_id')]
+          assert r.get('installed') is True and len(exact) == 1 and exact[0].get('enabled') is True, v
           print(json.dumps({'ok':True,'plugin_id':r['plugin_id'],'installed':True,'enabled':True,'changed':r.get('changed')}))
+          PY
+      - name: Mirror provider HTTP evidence into Operator Network
+        if: always()
+        env:
+          OPERATOR_TOKEN: ${{ secrets.OPERATOR_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import json, os, time, urllib.request, uuid
+          for name in ('app-full-access.json','plugin-install.json'):
+              try: value=json.load(open(name))
+              except FileNotFoundError: continue
+              for source in value.get('provider_requests',[]):
+                  event={
+                    'event_id': source.get('event_id') or str(uuid.uuid4()),
+                    'observed_at': time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),
+                    'provider':'chatgpt.com','producer':'plugin-admin-free-native',
+                    'operation':'plugin_admin','phase':'provider_http_response',
+                    'method':source.get('method'),'url':'https://chatgpt.com/backend-api'+source.get('path',''),
+                    'response_status':source.get('status'),'elapsed_ms':source.get('duration_ms'),
+                    'network_route':'github-actions-free-native','environment_id':os.environ.get('GITHUB_RUN_ID'),
+                    'credential_ref':'chatgpt.codex-auth','response_headers':{}
+                  }
+                  request=urllib.request.Request('https://cognilode-provider-http-evidence.evanbrown3000.workers.dev/ingest',data=json.dumps(event).encode(),method='POST',headers={'Authorization':'Bearer '+os.environ['OPERATOR_TOKEN'],'Content-Type':'application/json'})
+                  try: urllib.request.urlopen(request,timeout=20).read()
+                  except Exception: pass
           PY
       - if: always()
         uses: actions/upload-artifact@v4
