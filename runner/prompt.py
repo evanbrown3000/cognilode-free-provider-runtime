@@ -19,7 +19,20 @@ payload={'turn_attribution':{'turn_trigger':'composer'},'action':'next','is_do_n
 'messages':[{'id':mid,'author':{'role':'user'},'channel':None,'content':{'content_type':'text','parts':[assignments[idx]]},'metadata':{},'recipient':'all','status':'finished_successfully','weight':1}],
 'parent_message_id':str(uuid.uuid4()),'model':'auto','timezone':'America/Matamoros','timezone_offset_min':-300,
 'supported_encodings':['v1'],'genui_state_snapshots':[],'client_prepare_state':'sent','conversation_mode':{'kind':'primary_assistant'},'history_and_training_disabled':False}
-started=time.time();resp=client.chatgpt.conversations.create_stream(payload)
+started=time.time()
+msg=payload['messages'][0]
+prepare={k:payload[k] for k in ('action','parent_message_id','model','timezone_offset_min','timezone','is_do_not_remember') if k in payload}
+prepare.update({'client_prepare_state':'success','partial_query':{'id':msg['id'],'author':msg['author'],'content':msg['content']}})
+preparation=client.chatgpt.conversations.prepare(prepare)
+for field in ('headers','request_headers','generation_headers'):
+ for key,value in (preparation.get(field) or {}).items():
+  if key.lower() not in ('authorization','cookie','host','content-length','chatgpt-account-id','oai-device-id') and isinstance(value,(str,int,float,bool)):
+   client._session.headers[key]=str(value)
+conduit=preparation.get('conduit_token') or preparation.get('conduitToken')
+if conduit:client._session.headers['X-Conduit-Token']=str(conduit)
+client._session.headers['X-Oai-Turn-Trace-Id']=str(uuid.uuid4())
+payload['client_prepare_state']='sent'
+resp=client.chatgpt.conversations.create_stream(payload)
 result={'schema':'cognilode.chatmode-turn.v1','assignment_index':idx,'user_message_id':mid,'http_status':resp.status_code,'content_type':resp.headers.get('content-type',''),'provider_accepted':resp.status_code==200 and 'text/event-stream' in resp.headers.get('content-type',''),'conversation_id':None,'assistant_completion_observed':False,'events':0,'runner':'github-hosted-ubuntu','run_id':os.environ.get('GITHUB_RUN_ID'),'elapsed_ms':None}
 with open('conversation.jsonl','w') as f:
  for raw in resp.iter_lines(decode_unicode=True):
