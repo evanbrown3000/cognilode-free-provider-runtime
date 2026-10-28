@@ -43,6 +43,7 @@ put_secret('CHATGPT_ACCESS_TOKEN',sess['access_token'])
 put_secret('CHATGPT_ACCOUNT_ID',sess['account_id'])
 put_secret('CHATGPT_COOKIE',sess.get('cookie') or '')
 put_secret('CHATGPT_BROWSER_HEADERS',json.dumps(sess.get('browser_headers') or {}))
+put_secret('CHATGPT_COOKIES',json.dumps(sess.get('cookies') or []))
 put_secret('COGNILODE_GITHUB_TOKEN',token)
 put_secret('CORE_REPO_TOKEN',token)
 put_secret('OPERATOR_TOKEN',Path('/home/evan/.config/cognilode/operator-token').read_text().strip())
@@ -51,5 +52,5 @@ st2,_sink=api('GET','/repos/evanbrown3000/cognilode-conversation-corpus')
 if st2==404:
  st2,_sink=api('POST','/user/repos',{'name':'cognilode-conversation-corpus','description':'Private original Chat-mode conversations and corpus projections','private':True,'has_issues':True,'has_projects':False,'has_wiki':False,'auto_init':True})
  assert st2==201,(st2,_sink)
-st,_=api('POST',f'/repos/evanbrown3000/{repo}/actions/workflows/collect.yml/dispatches',{'ref':'main'});assert st==204,st
+st,_=api('POST',f'/repos/evanbrown3000/{repo}/actions/workflows/browser-turns.yml/dispatches',{'ref':'main'});assert st==204,st
 print(json.dumps({'ok':True,'repository':f'evanbrown3000/{repo}','workflow_dispatched':True}))
