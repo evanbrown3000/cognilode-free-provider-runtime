@@ -6,8 +6,7 @@ on:
 concurrency:
   group: cognilode-chatmode-single-owner
   cancel-in-progress: false
-permissions:
-  contents: read
+permissions: {contents: read}
 jobs:
   rotor:
     runs-on: ubuntu-latest
@@ -15,15 +14,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+        with: {python-version: '3.12'}
       - uses: actions/checkout@v4
         with:
           repository: evanbrown3000/cognilode-core-application
           token: ${{ secrets.CORE_REPO_TOKEN }}
           path: core
-      - run: python -m pip install --disable-pip-version-check playwright
-      - run: xvfb-run -a python runner/browser_turns.py
+      - run: python -m pip install --disable-pip-version-check 'git+https://github.com/B4PT0R/codex-backend-sdk.git@d13ac98ec0dc2a7ccd316ac9e6c2d8a137a1282b'
+      - run: python runner/rotor.py
         env:
           CHATGPT_ACCESS_TOKEN: ${{ secrets.CHATGPT_ACCESS_TOKEN }}
           CHATGPT_ACCOUNT_ID: ${{ secrets.CHATGPT_ACCOUNT_ID }}
@@ -37,7 +35,7 @@ jobs:
       - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: chatmode-rotor-receipt
-          path: browser-turns-receipt.json
+          name: chatmode-turn-receipt
+          path: turn-receipt.json
           if-no-files-found: ignore
           retention-days: 7
