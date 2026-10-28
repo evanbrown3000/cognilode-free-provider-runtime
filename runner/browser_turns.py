@@ -157,13 +157,14 @@ async def ensure_authenticated(context):
         except Exception:
             pass
 
-    login = page.get_by_role("button", name="Log in").or_(page.get_by_role("link", name="Log in")).first
-    await login.wait_for(state="visible", timeout=30000)
-    await login.click()
-    email = page.locator('input[type="email"],input[name="email"],input[name="username"]').first
+    email = page.locator('#mobile-auth-email,input[type="email"],input[name="email"],input[name="username"]').first
+    if not await email.is_visible():
+        login = page.get_by_role("button", name="Log in").or_(page.get_by_role("link", name="Log in")).first
+        await login.wait_for(state="visible", timeout=30000)
+        await login.click(force=True)
     await email.wait_for(state="visible", timeout=45000)
     await email.fill(os.environ["CHATGPT_LOGIN_USERNAME"])
-    await page.get_by_role("button", name="Continue").first.click()
+    await page.get_by_role("button", name="Continue").first.click(force=True)
     password = page.locator('input[type="password"],input[name="password"]').first
     await password.wait_for(state="visible", timeout=45000)
     await password.fill(os.environ["CHATGPT_LOGIN_PASSWORD"])
