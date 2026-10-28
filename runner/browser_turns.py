@@ -157,7 +157,7 @@ async def ensure_authenticated(context):
         except Exception:
             pass
 
-    email_choice = page.get_by_role("button", name="Continue with email").first
+    email_choice = page.get_by_text("Continue with email", exact=True).first
     if not await email_choice.is_visible():
         login = page.get_by_role("button", name="Log in").or_(page.get_by_role("link", name="Log in")).first
         await login.wait_for(state="visible", timeout=30000)
