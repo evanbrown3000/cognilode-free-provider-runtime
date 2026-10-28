@@ -112,9 +112,23 @@ def publish(lane, receipt, text):
     return issue["number"]
 
 
+def publish_responsibility(receipt, text):
+    repo = os.environ.get("STATE_REPOSITORY", "evanbrown3000/cognilode-agent-turns")
+    number = os.environ["COGNILODE_RESPONSIBILITY_ISSUE"]
+    header = "```json\n{}\n```\n\n".format(json.dumps(receipt, indent=2, sort_keys=True))
+    chunks = [text[i:i + 55000] for i in range(0, len(text), 55000)] or [""]
+    first = None
+    for index, chunk in enumerate(chunks):
+        comment = github("POST", "/repos/{}/issues/{}/comments".format(repo, number), {
+            "body": (header if index == 0 else "") + chunk,
+        })
+        first = first or comment["html_url"]
+    return first
+
+
 def main():
     lane = sys.argv[1]
-    assignment = LANES[lane]
+    assignment = os.environ.get("COGNILODE_ASSIGNMENT") or LANES[lane]
     plan = Path("core/ARCHITECTURE_PLAN.md")
     bundle = Path("cognilode-core-input.zip")
     with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as archive:
@@ -201,9 +215,19 @@ def main():
         "provider_http": NETWORK_EVENTS,
         "run_id": os.environ.get("GITHUB_RUN_ID"),
     }
-    receipt["state_issue"] = publish(lane, receipt, final_text)
+    if os.environ.get("COGNILODE_RESPONSIBILITY_ISSUE"):
+        receipt["responsibility_id"] = os.environ.get("COGNILODE_RESPONSIBILITY_ID")
+        receipt["result_comment_url"] = publish_responsibility(receipt, final_text)
+        Path("turn-result.json").write_text(json.dumps({
+            "conversation_id": conversation_id,
+            "terminal": terminal,
+            "comment_url": receipt["result_comment_url"],
+            "text": final_text,
+        }) + "\n")
+    else:
+        receipt["state_issue"] = publish(lane, receipt, final_text)
     Path("turn-receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
-    print(json.dumps({"lane": lane, "accepted": receipt["accepted"], "terminal": terminal, "response_characters": len(final_text), "state_issue": receipt["state_issue"]}))
+    print(json.dumps({"lane": lane, "accepted": receipt["accepted"], "terminal": terminal, "response_characters": len(final_text), "state_issue": receipt.get("state_issue"), "responsibility_id": receipt.get("responsibility_id")}))
     if not receipt["accepted"] or not terminal or not final_text:
         raise SystemExit(1)
 
