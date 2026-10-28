@@ -1,0 +1,74 @@
+[
+  {
+    "run_id": 40777566308,
+    "artifact": "prepared-chatmode-turn",
+    "accepted": true,
+    "assignment": 0,
+    "user_message_ids": [
+      "7f8d11a7-866b-4e4d-9eb1-62c6389d88c6"
+    ],
+    "conversation_ids": [],
+    "event_types": {
+      "attachments_uploaded": 1,
+      "prepare_post_started": 1,
+      "ready_to_send": 1,
+      "prompt_post_started": 1,
+      "provider_accepted": 1
+    },
+    "assistant_terminal_observed": false
+  },
+  {
+    "run_id": 40777735777,
+    "artifact": "chatmode-turn-3",
+    "accepted": true,
+    "assignment": 3,
+    "user_message_ids": [
+      "93365f7e-a8ec-4139-99a6-253829cb6ec6"
+    ],
+    "conversation_ids": [],
+    "event_types": {
+      "attachments_uploaded": 1,
+      "prepare_post_started": 1,
+      "ready_to_send": 1,
+      "prompt_post_started": 1,
+      "provider_accepted": 1
+    },
+    "assistant_terminal_observed": false
+  },
+  {
+    "run_id": 40777735777,
+    "artifact": "chatmode-turn-2",
+    "accepted": true,
+    "assignment": 2,
+    "user_message_ids": [
+      "78b943e4-a02b-4f54-96e8-c710ce581e63"
+    ],
+    "conversation_ids": [],
+    "event_types": {
+      "attachments_uploaded": 1,
+      "prepare_post_started": 1,
+      "ready_to_send": 1,
+      "prompt_post_started": 1,
+      "provider_accepted": 1
+    },
+    "assistant_terminal_observed": false
+  },
+  {
+    "run_id": 40777735777,
+    "artifact": "chatmode-turn-1",
+    "accepted": true,
+    "assignment": 1,
+    "user_message_ids": [
+      "b5940e0f-bc58-4187-bfaf-db973a9c759c"
+    ],
+    "conversation_ids": [],
+    "event_types": {
+      "attachments_uploaded": 1,
+      "prepare_post_started": 1,
+      "ready_to_send": 1,
+      "prompt_post_started": 1,
+      "provider_accepted": 1
+    },
+    "assistant_terminal_observed": false
+  }
+]

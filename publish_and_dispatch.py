@@ -45,5 +45,5 @@ put_secret('CHATGPT_COOKIE',sess.get('cookie') or '')
 put_secret('CHATGPT_BROWSER_HEADERS',json.dumps(sess.get('browser_headers') or {}))
 put_secret('CORE_REPO_TOKEN',token)
 put_secret('OPERATOR_TOKEN',Path('/home/evan/.config/cognilode/operator-token').read_text().strip())
-st,_=api('POST',f'/repos/evanbrown3000/{repo}/actions/workflows/prompt-four.yml/dispatches',{'ref':'main'});assert st==204,st
+st,_=api('POST',f'/repos/evanbrown3000/{repo}/actions/workflows/collect.yml/dispatches',{'ref':'main'});assert st==204,st
 print(json.dumps({'ok':True,'repository':f'evanbrown3000/{repo}','workflow_dispatched':True}))
