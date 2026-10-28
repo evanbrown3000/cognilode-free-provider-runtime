@@ -40,6 +40,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: chatmode-rotor-receipt
-          path: browser-turns-receipt.json
+          path: |
+            browser-turns-receipt.json
+            login-stage.json
           if-no-files-found: ignore
           retention-days: 7

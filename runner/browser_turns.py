@@ -166,7 +166,13 @@ async def ensure_authenticated(context):
     await email.fill(os.environ["CHATGPT_LOGIN_USERNAME"])
     await page.get_by_role("button", name="Continue").first.click(force=True)
     password = page.locator('input[type="password"],input[name="password"]').first
-    await password.wait_for(state="visible", timeout=45000)
+    try:
+        await password.wait_for(state="visible", timeout=45000)
+    except Exception:
+        body = await page.locator("body").inner_text(timeout=5000)
+        body = body.replace(os.environ["CHATGPT_LOGIN_USERNAME"], "[account]")
+        Path("login-stage.json").write_text(json.dumps({"url": page.url.split("?", 1)[0], "body": body[:4000]}, indent=2))
+        raise
     await password.fill(os.environ["CHATGPT_LOGIN_PASSWORD"])
     await page.get_by_role("button", name="Continue").first.click()
     await editor.wait_for(state="visible", timeout=90000)
