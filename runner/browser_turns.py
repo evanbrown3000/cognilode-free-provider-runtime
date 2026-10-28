@@ -175,7 +175,11 @@ async def ensure_authenticated(context):
         raise RuntimeError("ChatGPT login did not expose an email field")
     await email.wait_for(state="visible", timeout=45000)
     await email.fill(os.environ["CHATGPT_LOGIN_USERNAME"])
-    await page.get_by_role("button", name="Continue").first.click(force=True)
+    dialog = page.locator('#mobile-auth-dialog[open]').first
+    if await dialog.is_visible():
+        await dialog.get_by_role("button", name="Continue", exact=True).click(force=True)
+    else:
+        await page.get_by_role("button", name="Continue", exact=True).first.click(force=True)
     password = page.locator('input[type="password"],input[name="password"]').first
     try:
         await password.wait_for(state="visible", timeout=45000)
