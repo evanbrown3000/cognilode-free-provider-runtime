@@ -1,8 +1,6 @@
 name: cognilode-browser-chatmode-turns
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '7,37 * * * *'
 concurrency:
   group: cognilode-browser-chatmode-owner
   cancel-in-progress: false
@@ -11,7 +9,7 @@ permissions:
 jobs:
   chatmode:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

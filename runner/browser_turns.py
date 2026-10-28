@@ -93,14 +93,33 @@ async def run_lane(context, index, assignment):
             break
         await page.wait_for_timeout(250)
     accepted = bool(provider and provider["status"] == 200)
-    in_turn = bool(await page.locator('button[aria-label*="Stop" i],button[data-testid="stop-button"]').count())
+    provisional = {
+        "schema": "cognilode.chatmode-browser-turn.v1",
+        "lane": index,
+        "accepted": accepted,
+        "terminal": False,
+        "provider_http": provider,
+        "conversation_url": page.url.split("?", 1)[0],
+        "run_id": os.environ.get("GITHUB_RUN_ID"),
+    }
+    if accepted:
+        provisional["state_issue"] = await asyncio.to_thread(
+            publish, index, provisional, "Provider accepted this turn; response streaming is active."
+        )
+    stop = page.locator('button[aria-label*="Stop" i],button[data-testid="stop-button"]')
+    in_turn = False
+    for _ in range(60):
+        in_turn = bool(await stop.count())
+        if in_turn:
+            break
+        await page.wait_for_timeout(500)
     conversation_url = page.url.split("?", 1)[0]
     # Keep ownership until the provider turn is terminal or the bounded cloud
     # job approaches its own timeout. Capture semantic visible content only.
     deadline = time.time() + 1200
     while in_turn and time.time() < deadline:
         await page.wait_for_timeout(5000)
-        in_turn = bool(await page.locator('button[aria-label*="Stop" i],button[data-testid="stop-button"]').count())
+        in_turn = bool(await stop.count())
     messages = await page.locator("main").inner_text(timeout=30000)
     receipt = {
         "schema": "cognilode.chatmode-browser-turn.v1",
