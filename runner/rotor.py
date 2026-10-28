@@ -12,6 +12,8 @@ import sys
 import urllib.error
 import urllib.request
 
+import organization
+
 REPO = os.environ.get("ROTOR_STATE_REPOSITORY", "evanbrown3000/cognilode-agent-turns")
 TITLE = "ChatMode rotor state"
 LANES = ("provider", "corpus", "plugins", "organization")
@@ -66,6 +68,86 @@ def save(issue, state):
         raise RuntimeError("rotor state commit failed")
 
 
+def open_issues():
+    status, issues = api("GET", f"/repos/{REPO}/issues?state=open&per_page=100")
+    if status != 200:
+        raise RuntimeError("organization state unavailable")
+    return issues
+
+
+def update_issue(issue, value):
+    status, updated = api("PATCH", f"/repos/{REPO}/issues/{issue['number']}", {"body": organization.encode(value)})
+    if status != 200:
+        raise RuntimeError("responsibility state commit failed")
+    return updated
+
+
+def create_issue(value):
+    title = organization.TITLE_PREFIX + value["responsibility_id"]
+    status, issue = api("POST", f"/repos/{REPO}/issues", {"title": title, "body": organization.encode(value)})
+    if status != 201:
+        raise RuntimeError("responsibility creation failed")
+    return issue
+
+
+def run_responsibility(issue, value, run_id):
+    value = organization.claim(value, run_id)
+    update_issue(issue, value)
+    environment = dict(os.environ)
+    environment["COGNILODE_ASSIGNMENT"] = """You are Employee {employee_id}, serving as {role} on project {project_id} under manager {manager_id}.
+
+Responsibility ID: {responsibility_id}
+
+{instructions}
+
+Complete substantive work, preserve useful artifacts and return enough detail for your manager to inspect and act on the result.
+""".format(
+        employee_id=value["employee"]["id"], role=value["employee"]["role"],
+        project_id=value["project_id"], manager_id=value["manager_id"],
+        responsibility_id=value["responsibility_id"], instructions=value["instructions"],
+    )
+    environment["COGNILODE_RESPONSIBILITY_ISSUE"] = str(issue["number"])
+    environment["COGNILODE_RESPONSIBILITY_ID"] = value["responsibility_id"]
+    process = subprocess.run(
+        [sys.executable, "runner/turn.py", "organization"],
+        text=True, capture_output=True, env=environment,
+    )
+    if process.returncode:
+        # Leave a visible failed return without creating retry traffic. A manager
+        # or operator can revise/requeue the responsibility after account pause.
+        value["status"] = "failed"
+        value["claim"] = None
+        value["failure"] = {"run_id": run_id, "at": now().isoformat(), "summary": process.stderr[-2000:]}
+        update_issue(issue, value)
+        return process, value
+
+    artifact = json.loads(open("turn-result.json").read())
+    value = organization.returned(
+        value, artifact["comment_url"], artifact.get("conversation_id"), artifact.get("terminal"),
+    )
+    update_issue(issue, value)
+    if value.get("kind") == "manager_review":
+        directive = organization.next_directive(artifact.get("text", ""))
+        parent_id = value.get("parent_id")
+        for parent_issue in open_issues():
+            parent = organization.decode(parent_issue)
+            if parent and parent["responsibility_id"] == parent_id:
+                update_issue(parent_issue, organization.consumed(parent, value["responsibility_id"]))
+                break
+        if directive:
+            create_issue(organization.new_responsibility(
+                project_id=value["project_id"],
+                employee_id=directive["employee_id"], role=directive["role"],
+                manager_id=value.get("manager_id") or value["employee"]["id"],
+                instructions=directive["instructions"],
+                parent_id=value["responsibility_id"], priority=directive["priority"],
+            ))
+            update_issue(issue, organization.consumed(value, value["responsibility_id"]))
+    else:
+        create_issue(organization.manager_review(value, artifact.get("text", "")))
+    return process, value
+
+
 def now():
     return dt.datetime.now(dt.timezone.utc)
 
@@ -82,6 +164,27 @@ def main():
     pause = parse_time(state.get("pause_until"))
     if pause and pause > now():
         print(json.dumps({"started": False, "reason": "account_pause", "pause_until": state["pause_until"]}))
+        return
+    candidates = organization.ready(open_issues())
+    if candidates:
+        responsibility_issue, responsibility = candidates[0]
+        process, returned_state = run_responsibility(
+            responsibility_issue, responsibility, os.environ.get("GITHUB_RUN_ID"),
+        )
+        outcome = {
+            "responsibility_id": responsibility["responsibility_id"],
+            "employee_id": responsibility["employee"]["id"],
+            "run_id": os.environ.get("GITHUB_RUN_ID"),
+            "finished_at": now().isoformat(),
+            "exit_code": process.returncode,
+            "status": returned_state["status"],
+        }
+        state["last_outcome"] = outcome
+        state["pause_until"] = (now() + dt.timedelta(hours=4 if process.returncode == 0 else 12)).isoformat()
+        save(issue, state)
+        print(json.dumps(outcome))
+        if process.returncode:
+            raise SystemExit(process.returncode)
         return
     index = int(state.get("next_lane", 0)) % len(LANES)
     lane = LANES[index]
