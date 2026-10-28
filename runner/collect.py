@@ -26,7 +26,7 @@ except Exception as e:
 body={'schema':'cognilode.chatmode-readback.v1','matched':matched,'wanted':sorted(wanted),'observed_at':time.time(),'deferred':deferred}
 open('matched-conversations.json','w').write(json.dumps(body,indent=2)+'\n')
 # Private GitHub corpus sink: one current issue, updated in place.
-token=os.environ['GITHUB_OWNER_TOKEN']; repo='evanbrown3000/cognilode-conversation-corpus'
+token=os.environ['COGNILODE_GITHUB_TOKEN']; repo='evanbrown3000/cognilode-conversation-corpus'
 def api(method,path,data=None):
  req=urllib.request.Request('https://api.github.com'+path,method=method,headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'})
  if data is not None:req.data=json.dumps(data).encode();req.add_header('Content-Type','application/json')
