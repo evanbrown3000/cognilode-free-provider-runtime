@@ -33,9 +33,10 @@ jobs:
           import json
           v=json.load(open('app-full-access.json'))
           assert v.get('ok') is True, v
-          assert v.get('apps_privacy_control') == 'full_access', v
-          assert v.get('app_id') == 'asdk_app_6ae24a6b9adc819194f05ea2c91c14cc', v
-          print(json.dumps({'ok':True,'app_id':v['app_id'],'link_id':v.get('link_id'),'apps_privacy_control':v['apps_privacy_control'],'changed':v.get('changed')}))
+          r=v.get('result') or {}
+          assert r.get('apps_privacy_control') == 'full_access', v
+          assert r.get('app_id') == 'asdk_app_6ae24a6b9adc819194f05ea2c91c14cc', v
+          print(json.dumps({'ok':True,'app_id':r['app_id'],'link_id':r.get('link_id'),'apps_privacy_control':r['apps_privacy_control'],'changed':r.get('changed')}))
           PY
       - name: Require installed and enabled plugin readback
         run: |
@@ -45,9 +46,10 @@ jobs:
           import json
           v=json.load(open('plugin-install.json'))
           assert v.get('ok') is True, v
-          assert v.get('plugin_id') == 'plugin_asdk_app_6ae24a6b9adc819194f05ea2c91c14cc', v
-          assert v.get('installed') is True and v.get('enabled') is True, v
-          print(json.dumps({'ok':True,'plugin_id':v['plugin_id'],'installed':True,'enabled':True,'changed':v.get('changed')}))
+          r=v.get('result') or {}
+          assert r.get('plugin_id') == 'plugin_asdk_app_6ae24a6b9adc819194f05ea2c91c14cc', v
+          assert r.get('installed') is True and r.get('enabled') is True, v
+          print(json.dumps({'ok':True,'plugin_id':r['plugin_id'],'installed':True,'enabled':True,'changed':r.get('changed')}))
           PY
       - if: always()
         uses: actions/upload-artifact@v4
