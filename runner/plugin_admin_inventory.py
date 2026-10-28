@@ -4,7 +4,11 @@ h=json.loads(os.environ.get('CHATGPT_BROWSER_HEADERS','{}'))
 h.update({'Authorization':'Bearer '+os.environ['CHATGPT_ACCESS_TOKEN'],'ChatGPT-Account-ID':os.environ['CHATGPT_ACCOUNT_ID'],'Cookie':os.environ.get('CHATGPT_COOKIE',''),'Accept':'application/json','Origin':'https://chatgpt.com','Referer':'https://chatgpt.com/'})
 r=requests.get('https://chatgpt.com/backend-api/ps/plugins/installed',headers=h,timeout=45)
 available_response=requests.get('https://chatgpt.com/backend-api/ps/plugins/list?scope=USER&limit=200',headers=h,timeout=45)
-out={'schema':'cognilode.plugin-admin-snapshot.v1','status':r.status_code,'content_type':r.headers.get('content-type',''),'observed_at':time.time(),'installed':r.json() if r.ok and 'json' in r.headers.get('content-type','') else None,'available':available_response.json() if available_response.ok and 'json' in available_response.headers.get('content-type','') else None,'available_status':available_response.status_code}
+operator_id='asdk_app_6ae24a6b9adc819194f05ea2c91c14cc'
+operator_response=requests.get('https://chatgpt.com/backend-api/aip/connectors/'+operator_id,headers=h,timeout=45)
+operator=operator_response.json() if operator_response.ok and 'json' in operator_response.headers.get('content-type','') else None
+links_response=requests.post('https://chatgpt.com/backend-api/aip/connectors/links/list_accessible',headers=h,json={'principals':(operator or {}).get('owners',[])},timeout=45) if operator else None
+out={'schema':'cognilode.plugin-admin-snapshot.v1','status':r.status_code,'content_type':r.headers.get('content-type',''),'observed_at':time.time(),'installed':r.json() if r.ok and 'json' in r.headers.get('content-type','') else None,'available':available_response.json() if available_response.ok and 'json' in available_response.headers.get('content-type','') else None,'available_status':available_response.status_code,'operator_app':operator,'operator_status':operator_response.status_code,'operator_links':links_response.json() if links_response and links_response.ok else None,'operator_links_status':links_response.status_code if links_response else None}
 open('plugin-admin-snapshot.json','w').write(json.dumps(out,indent=2)+'\n');print(json.dumps({'status':out['status'],'application_json':out['installed'] is not None}))
 if out['installed'] is None or out['available'] is None:raise SystemExit(1)
 
