@@ -1,5 +1,8 @@
 name: collect-accepted-chatmode-turns
-on: {workflow_dispatch: {}}
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
 permissions: {contents: read}
 jobs:
   collect:
@@ -16,6 +19,7 @@ jobs:
           CHATGPT_ACCOUNT_ID: ${{ secrets.CHATGPT_ACCOUNT_ID }}
           CHATGPT_COOKIE: ${{ secrets.CHATGPT_COOKIE }}
           CHATGPT_BROWSER_HEADERS: ${{ secrets.CHATGPT_BROWSER_HEADERS }}
+          GITHUB_OWNER_TOKEN: ${{ secrets.GITHUB_OWNER_TOKEN }}
       - if: always()
         uses: actions/upload-artifact@v4
         with:
