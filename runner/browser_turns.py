@@ -6,6 +6,7 @@ import os
 import time
 import urllib.request
 import uuid
+import zipfile
 from pathlib import Path
 
 from playwright.async_api import async_playwright
@@ -88,6 +89,10 @@ async def run_lane(context, index, assignment):
     except Exception as error:
         body = await page.locator("body").inner_text(timeout=5000)
         raise RuntimeError("composer unavailable at {}: {}".format(page.url.split("?", 1)[0], body[:700])) from error
+    attachment = page.locator('input[type="file"]').first
+    if await attachment.count() and Path("cognilode-core-input.zip").exists():
+        await attachment.set_input_files("cognilode-core-input.zip")
+        await page.wait_for_timeout(1000)
     await editor.fill(assignment)
     send = page.locator('button[aria-label*="Send" i]').first
     await send.wait_for(state="visible", timeout=20000)
@@ -140,6 +145,11 @@ async def run_lane(context, index, assignment):
 
 
 async def main():
+    bundle = Path("cognilode-core-input.zip")
+    with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as archive:
+        for source in [Path("core/ARCHITECTURE_PLAN.md"), *sorted(Path("core/application").rglob("*.py")), *sorted(Path("core/tests").rglob("*.py"))]:
+            if source.exists():
+                archive.write(source, source.relative_to("core"))
     stored_headers = json.loads(os.environ.get("CHATGPT_BROWSER_HEADERS", "{}"))
     extra_headers = {
         "Authorization": "Bearer " + os.environ["CHATGPT_ACCESS_TOKEN"],
